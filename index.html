@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>해듬카페 AI 매니저</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: #f5f0e8; min-height: 100vh; }
+
+  .app { display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: 220px; background: #2e1e12; display: flex; flex-direction: column; flex-shrink: 0; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  .sidebar-header { padding: 20px 16px 16px; border-bottom: 1px solid #4a2e1a; }
+  .cafe-row { display: flex; align-items: center; gap: 10px; }
+  .cafe-icon { width: 38px; height: 38px; border-radius: 50%; background: #c8a97e; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .cafe-name { font-size: 15px; font-weight: 700; color: #f5ede0; }
+  .cafe-sub { font-size: 11px; color: #9a7050; margin-top: 2px; }
+
+  .nav-section { padding: 14px 0 6px; }
+  .nav-label { font-size: 10px; color: #6a4c30; padding: 0 16px 6px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .nav-btn { display: flex; align-items: center; gap: 10px; padding: 9px 16px; width: 100%; background: none; border: none; color: #b89070; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; text-align: left; transition: all .15s; }
+  .nav-btn:hover { background: #3e2a18; color: #f0dcc0; }
+  .nav-btn.active { background: #4e3424; color: #f5ddb8; }
+  .nav-btn .icon { font-size: 17px; width: 20px; }
+
+  .sidebar-footer { margin-top: auto; padding: 14px 16px; border-top: 1px solid #3a2210; }
+  .admin-btn { width: 100%; padding: 9px; border-radius: 8px; background: transparent; border: 1px solid #5a3c20; color: #9a7050; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: all .15s; }
+  .admin-btn:hover { background: #3e2a18; color: #c8a97e; }
+
+  /* CHAT */
+  #chat-view { display: flex; flex-direction: column; height: 100%; }
+  .chat-header { padding: 14px 20px; background: #fff; border-bottom: 1px solid #e8dcc8; display: flex; align-items: center; gap: 12px; }
+  .chat-header-icon { width: 34px; height: 34px; border-radius: 50%; background: #c8a97e; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .chat-header-info .title { font-size: 14px; font-weight: 700; color: #2e1e12; }
+  .chat-header-info .sub { font-size: 12px; color: #9a7050; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #5cad7e; margin-left: auto; }
+
+  .messages { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .msg { display: flex; gap: 8px; max-width: 84%; }
+  .msg.user { flex-direction: row-reverse; align-self: flex-end; }
+  .msg-av { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .msg.bot .msg-av { background: #c8a97e; color: #fff; }
+  .msg.user .msg-av { background: #4e3424; color: #f5ddb8; }
+  .msg-bubble { padding: 10px 14px; border-radius: 16px; font-size: 13.5px; line-height: 1.7; }
+  .msg.bot .msg-bubble { background: #fff; color: #2e1e12; border-radius: 4px 16px 16px 16px; border: 1px solid #e8dcc8; }
+  .msg.user .msg-bubble { background: #4e3424; color: #f5ddb8; border-radius: 16px 4px 16px 16px; }
+
+  /* API 키 설정 배너 */
+  .api-banner { background: #fff8ee; border: 1px solid #f0c070; border-radius: 10px; padding: 12px 16px; margin: 12px 18px 0; font-size: 13px; color: #7a5020; display: flex; align-items: center; gap: 10px; }
+  .api-banner input { flex: 1; border: 1px solid #d8c4a0; border-radius: 8px; padding: 7px 10px; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; color: #2e1e12; background: #faf6f0; outline: none; }
+  .api-banner input:focus { border-color: #a07050; }
+  .api-save-btn { padding: 7px 12px; border-radius: 8px; background: #6a3e20; color: #fff; border: none; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; white-space: nowrap; }
+  .api-save-btn:hover { background: #4e2e14; }
+
+  .quick-area { padding: 10px 18px 6px; display: flex; flex-wrap: wrap; gap: 7px; }
+  .quick-btn { font-size: 12px; padding: 6px 12px; border-radius: 20px; border: 1px solid #c8a97e; background: #fff; color: #6a4020; cursor: pointer; transition: all .15s; white-space: nowrap; }
+  .quick-btn:hover { background: #c8a97e; color: #fff; }
+
+  .input-row { padding: 12px 16px; background: #fff; border-top: 1px solid #e8dcc8; display: flex; gap: 8px; align-items: flex-end; }
+  .input-wrap { flex: 1; }
+  textarea { width: 100%; border: 1px solid #d8c4a0; border-radius: 10px; padding: 10px 13px; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; color: #2e1e12; background: #faf6f0; resize: none; outline: none; line-height: 1.5; max-height: 100px; }
+  textarea:focus { border-color: #a07050; }
+  textarea::placeholder { color: #b09878; }
+  .send-btn { width: 38px; height: 38px; border-radius: 50%; background: #6a3e20; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; transition: background .15s; flex-shrink: 0; }
+  .send-btn:hover { background: #4e2e14; }
+
+  .typing-wrap { display: flex; gap: 4px; padding: 10px 14px; }
+  .typing-dot { width: 7px; height: 7px; border-radius: 50%; background: #b09878; animation: blink 1.2s infinite; }
+  .typing-dot:nth-child(2) { animation-delay: .2s; }
+  .typing-dot:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%,80%,100%{opacity:.3}40%{opacity:1} }
+
+  /* ADMIN */
+  #admin-view { display: none; flex-direction: column; height: 100%; background: #f5f0e8; }
+  #login-screen { display: flex; align-items: center; justify-content: center; height: 100%; }
+  .login-card { background: #fff; border-radius: 16px; border: 1px solid #e0d0b8; padding: 36px 32px; width: 360px; text-align: center; }
+  .login-icon { font-size: 36px; margin-bottom: 12px; }
+  .login-title { font-size: 18px; font-weight: 700; color: #2e1e12; margin-bottom: 4px; }
+  .login-sub { font-size: 13px; color: #9a7050; margin-bottom: 24px; }
+  .login-input { width: 100%; border: 1px solid #d8c4a0; border-radius: 10px; padding: 11px 14px; font-size: 14px; font-family: 'Noto Sans KR', sans-serif; color: #2e1e12; background: #faf6f0; outline: none; margin-bottom: 10px; }
+  .login-input:focus { border-color: #a07050; }
+  .login-submit { width: 100%; padding: 11px; border-radius: 10px; background: #6a3e20; color: #fff; border: none; font-size: 14px; font-family: 'Noto Sans KR', sans-serif; font-weight: 700; cursor: pointer; transition: background .15s; }
+  .login-submit:hover { background: #4e2e14; }
+  .login-err { font-size: 12px; color: #c0392b; margin-top: 8px; display: none; }
+
+  #admin-panel { display: none; flex-direction: column; height: 100%; }
+  .admin-header { padding: 14px 24px; background: #fff; border-bottom: 1px solid #e8dcc8; display: flex; align-items: center; gap: 12px; }
+  .admin-header-title { font-size: 15px; font-weight: 700; color: #2e1e12; }
+  .admin-header-sub { font-size: 12px; color: #9a7050; }
+  .logout-btn { margin-left: auto; font-size: 12px; padding: 6px 12px; border-radius: 8px; border: 1px solid #d8c4a0; background: transparent; color: #7a5030; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; }
+  .logout-btn:hover { background: #f5ede0; }
+
+  .admin-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+  .admin-tabs { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+  .admin-tab { padding: 7px 16px; border-radius: 20px; border: 1px solid #d8c4a0; background: #fff; color: #7a5030; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: all .15s; }
+  .admin-tab.active { background: #6a3e20; color: #fff; border-color: #6a3e20; }
+
+  .admin-section { display: none; }
+  .admin-section.active { display: block; }
+  .section-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .section-title { font-size: 15px; font-weight: 700; color: #2e1e12; }
+  .add-btn { padding: 7px 14px; border-radius: 8px; background: #6a3e20; color: #fff; border: none; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; }
+  .add-btn:hover { background: #4e2e14; }
+
+  .item-card { background: #fff; border: 1px solid #e8dcc8; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+  .item-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .item-title-input { flex: 1; border: none; font-size: 14px; font-weight: 700; color: #2e1e12; font-family: 'Noto Sans KR', sans-serif; background: transparent; outline: none; border-bottom: 1px solid transparent; }
+  .item-title-input:focus { border-bottom: 1px solid #c8a97e; }
+  .item-body-input { width: 100%; border: 1px solid #e8dcc8; border-radius: 8px; padding: 9px 12px; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; color: #3d2b1f; background: #faf6f0; resize: vertical; outline: none; line-height: 1.6; min-height: 80px; }
+  .item-body-input:focus { border-color: #c8a97e; }
+  .del-btn { width: 28px; height: 28px; border-radius: 50%; background: #fee; border: 1px solid #fcc; color: #c0392b; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .del-btn:hover { background: #fdd; }
+
+  /* API 키 설정 (관리자) */
+  .api-setting-card { background: #fff8ee; border: 1px solid #f0c070; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .api-setting-title { font-size: 14px; font-weight: 700; color: #7a5020; margin-bottom: 6px; }
+  .api-setting-desc { font-size: 12px; color: #9a7050; margin-bottom: 10px; line-height: 1.6; }
+  .api-setting-row { display: flex; gap: 8px; }
+  .api-setting-input { flex: 1; border: 1px solid #d8c4a0; border-radius: 8px; padding: 9px 12px; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; color: #2e1e12; background: #fff; outline: none; }
+  .api-setting-input:focus { border-color: #a07050; }
+  .api-setting-save { padding: 9px 16px; border-radius: 8px; background: #6a3e20; color: #fff; border: none; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; }
+  .api-setting-save:hover { background: #4e2e14; }
+  .api-link { font-size: 12px; color: #6a9ecf; margin-top: 8px; display: block; }
+
+  .save-bar { padding: 14px 24px; background: #fff; border-top: 1px solid #e8dcc8; display: flex; align-items: center; gap: 12px; }
+  .save-btn { padding: 10px 24px; border-radius: 10px; background: #6a3e20; color: #fff; border: none; font-size: 14px; font-family: 'Noto Sans KR', sans-serif; font-weight: 700; cursor: pointer; }
+  .save-btn:hover { background: #4e2e14; }
+  .save-note { font-size: 12px; color: #9a7050; }
+  .save-ok { font-size: 12px; color: #5cad7e; display: none; }
+
+  @media (max-width: 600px) {
+    .sidebar { width: 60px; }
+    .cafe-name, .cafe-sub, .nav-label, .nav-btn span:last-child, .sidebar-footer .admin-btn span { display: none; }
+    .nav-btn { justify-content: center; padding: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="cafe-row">
+        <div class="cafe-icon">☕</div>
+        <div>
+          <div class="cafe-name">해듬카페</div>
+          <div class="cafe-sub">직원 교육 AI</div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">카테고리</div>
+      <button class="nav-btn active" onclick="setNav('all',this)"><span class="icon">🗂️</span><span>전체</span></button>
+      <button class="nav-btn" onclick="setNav('recipe',this)"><span class="icon">☕</span><span>레시피</span></button>
+      <button class="nav-btn" onclick="setNav('clean',this)"><span class="icon">🧹</span><span>청소·위생</span></button>
+      <button class="nav-btn" onclick="setNav('service',this)"><span class="icon">😊</span><span>고객 응대</span></button>
+      <button class="nav-btn" onclick="setNav('system',this)"><span class="icon">📋</span><span>카페 시스템</span></button>
+    </div>
+    <div class="sidebar-footer">
+      <button class="admin-btn" onclick="showAdmin()">⚙️ 관리자 페이지</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- CHAT VIEW -->
+    <div id="chat-view">
+      <div class="chat-header">
+        <div class="chat-header-icon">🤖</div>
+        <div class="chat-header-info">
+          <div class="title">해듬 AI 매니저</div>
+          <div class="sub" id="current-cat">전체 질문 가능</div>
+        </div>
+        <div class="status-dot" title="온라인"></div>
+      </div>
+
+      <!-- API 키 미설정 시 배너 -->
+      <div class="api-banner" id="api-banner" style="display:none">
+        <span>🔑</span>
+        <div style="flex:1">
+          <div style="font-weight:700;margin-bottom:4px">Gemini API 키를 입력해주세요</div>
+          <div style="font-size:11px;color:#9a7050">관리자 페이지 → API 설정에서 입력하거나 아래에 바로 입력하세요</div>
+        </div>
+        <input type="password" id="quick-api-input" placeholder="AIza...로 시작하는 키">
+        <button class="api-save-btn" onclick="quickSaveApi()">저장</button>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="msg bot">
+          <div class="msg-av">AI</div>
+          <div class="msg-bubble">안녕하세요! 해듬카페 AI 매니저예요 ☕<br>레시피, 청소, 고객 응대, 운영 규칙 등 무엇이든 물어보세요!</div>
+        </div>
+      </div>
+
+      <div class="quick-area" id="quick-area">
+        <button class="quick-btn" onclick="askQ('아메리카노 레시피 알려줘')">☕ 아메리카노</button>
+        <button class="quick-btn" onclick="askQ('마감 청소 순서가 어떻게 돼?')">🧹 마감 청소</button>
+        <button class="quick-btn" onclick="askQ('불만 고객은 어떻게 응대해?')">😊 고객 응대</button>
+        <button class="quick-btn" onclick="askQ('신입이 꼭 알아야 할 규칙은?')">📋 필수 규칙</button>
+      </div>
+
+      <div class="input-row">
+        <div class="input-wrap">
+          <textarea id="chat-input" rows="1" placeholder="무엇이든 물어보세요..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        </div>
+        <button class="send-btn" onclick="sendMsg()" title="전송">➤</button>
+      </div>
+    </div>
+
+    <!-- ADMIN VIEW -->
+    <div id="admin-view">
+      <div id="login-screen">
+        <div class="login-card">
+          <div class="login-icon">🔒</div>
+          <div class="login-title">관리자 로그인</div>
+          <div class="login-sub">해듬카페 관리자만 접근할 수 있어요</div>
+          <input type="password" class="login-input" id="pw-input" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()">
+          <button class="login-submit" onclick="doLogin()">로그인</button>
+          <div class="login-err" id="login-err">비밀번호가 틀렸어요</div>
+          <div style="margin-top:16px;font-size:11px;color:#b09878">초기 비밀번호: <b>haedum1234</b></div>
+        </div>
+      </div>
+
+      <div id="admin-panel">
+        <div class="admin-header">
+          <div>
+            <div class="admin-header-title">⚙️ 관리자 페이지</div>
+            <div class="admin-header-sub">AI 정보 수정 및 설정</div>
+          </div>
+          <button class="logout-btn" onclick="doLogout()">로그아웃</button>
+        </div>
+
+        <div class="admin-body">
+          <div class="admin-tabs">
+            <button class="admin-tab active" onclick="switchTab('recipe',this)">☕ 레시피</button>
+            <button class="admin-tab" onclick="switchTab('clean',this)">🧹 청소·위생</button>
+            <button class="admin-tab" onclick="switchTab('service',this)">😊 고객 응대</button>
+            <button class="admin-tab" onclick="switchTab('system',this)">📋 카페 시스템</button>
+            <button class="admin-tab" onclick="switchTab('apikey',this)">🔑 API 설정</button>
+            <button class="admin-tab" onclick="switchTab('pw',this)">🔐 비밀번호</button>
+          </div>
+
+          <div class="admin-section active" id="tab-recipe">
+            <div class="section-row"><div class="section-title">레시피 관리</div><button class="add-btn" onclick="addItem('recipe')">+ 항목 추가</button></div>
+            <div id="list-recipe"></div>
+          </div>
+          <div class="admin-section" id="tab-clean">
+            <div class="section-row"><div class="section-title">청소·위생 관리</div><button class="add-btn" onclick="addItem('clean')">+ 항목 추가</button></div>
+            <div id="list-clean"></div>
+          </div>
+          <div class="admin-section" id="tab-service">
+            <div class="section-row"><div class="section-title">고객 응대 관리</div><button class="add-btn" onclick="addItem('service')">+ 항목 추가</button></div>
+            <div id="list-service"></div>
+          </div>
+          <div class="admin-section" id="tab-system">
+            <div class="section-row"><div class="section-title">카페 시스템·운영 규칙</div><button class="add-btn" onclick="addItem('system')">+ 항목 추가</button></div>
+            <div id="list-system"></div>
+          </div>
+
+          <!-- API KEY 설정 탭 -->
+          <div class="admin-section" id="tab-apikey">
+            <div class="section-title" style="margin-bottom:14px">🔑 Gemini API 키 설정</div>
+            <div class="api-setting-card">
+              <div class="api-setting-title">Google Gemini API 키</div>
+              <div class="api-setting-desc">
+                AI가 답변하려면 Gemini API 키가 필요해요.<br>
+                아래 링크에서 무료로 발급받을 수 있어요 (Google 계정 필요).<br>
+                키는 이 기기의 브라우저에만 저장되고 외부로 전송되지 않아요.
+              </div>
+              <div class="api-setting-row">
+                <input type="password" class="api-setting-input" id="gemini-key-input" placeholder="AIzaSy...로 시작하는 키를 붙여넣으세요">
+                <button class="api-setting-save" onclick="saveApiKey()">저장</button>
+              </div>
+              <a class="api-link" href="https://aistudio.google.com/app/apikey" target="_blank">🔗 Google AI Studio에서 무료 API 키 발급받기 →</a>
+              <div id="api-key-status" style="margin-top:10px;font-size:12px;color:#5cad7e;display:none">✓ API 키가 저장됐어요!</div>
+            </div>
+            <div style="background:#f0f8ff;border:1px solid #b5d4f4;border-radius:10px;padding:14px 16px;font-size:12px;color:#0c447c;line-height:1.8">
+              <b>무료 사용 한도 (2025년 기준)</b><br>
+              • Gemini 1.5 Flash 모델: 하루 1,500번 요청 무료<br>
+              • 직원 10명이 하루 10번씩 질문해도 100번 → 충분해요<br>
+              • 한도 초과 시 다음날 자동 초기화됩니다
+            </div>
+          </div>
+
+          <!-- 비밀번호 변경 -->
+          <div class="admin-section" id="tab-pw">
+            <div class="section-title" style="margin-bottom:16px">비밀번호 변경</div>
+            <div class="item-card" style="max-width:420px">
+              <input type="password" class="login-input" id="pw-cur" placeholder="현재 비밀번호">
+              <input type="password" class="login-input" id="pw-new" placeholder="새 비밀번호">
+              <input type="password" class="login-input" id="pw-new2" placeholder="새 비밀번호 확인">
+              <button class="login-submit" onclick="changePw()">변경하기</button>
+              <div id="pw-msg" style="margin-top:8px;font-size:12px;display:none"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="save-bar">
+          <button class="save-btn" onclick="saveAll()">💾 저장하기</button>
+          <div class="save-note">저장 후 AI가 즉시 업데이트된 내용으로 답변해요</div>
+          <div class="save-ok" id="save-ok">✓ 저장 완료!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== DEFAULT DATA =====
+const DEFAULT_DATA = {
+  recipe: [
+    { title:"아메리카노", body:"에스프레소 더블샷(18-20g, 추출 25-30초, 약 40ml) + 물 200ml\n• 뜨거운: 90도 물\n• 아이스: 차가운 물 + 얼음 가득" },
+    { title:"카페 라떼", body:"에스프레소 더블샷 + 스팀밀크 200ml\n• 우유 온도: 60-65도 유지\n• 우유 거품은 0.5cm 이하로 얇게" },
+    { title:"카라멜 마키아또", body:"에스프레소 더블샷 + 스팀밀크 + 카라멜 시럽 드리즐\n• 우유를 먼저 넣고 에스프레소를 위에 부어요\n• 카라멜 시럽은 격자 무늬로 올려요" },
+    { title:"에스프레소 기본 원칙", body:"• 그라인더 분쇄도: 매일 오픈 전 확인\n• 추출 시간: 25-30초\n• 수율: 약 40ml (더블샷 기준)\n• 추출 전 포터필터 워밍업 필수" }
+  ],
+  clean: [
+    { title:"오픈 전 청소", body:"1. 바닥 쓸기 및 걸레질\n2. 테이블, 의자 닦기\n3. 머신 예열 및 포터필터 세척\n4. 냉장고 온도 확인 (4도 이하)\n5. 음료 재료 유통기한 확인" },
+    { title:"영업 중 청소", body:"• 테이블 수시 정리\n• 쓰레기통 70% 이상 시 즉시 교체\n• 음료 흘림 즉시 닦기\n• 1시간마다 화장실 점검" },
+    { title:"마감 청소", body:"1. 머신 역세척(백플러시)\n2. 스팀봉 분리 세척\n3. 냉장고 재료 정리 및 랩핑\n4. 바닥 청소\n5. 싱크대 소독\n6. 쓰레기 분리수거" },
+    { title:"청소도구 구분 (중요!)", body:"• 파란 걸레: 바닥 전용\n• 흰 걸레: 테이블·바 상판 전용\n• 노란 스펀지: 싱크대 전용\n⚠️ 절대 혼용 금지! 교차 오염 방지" }
+  ],
+  service: [
+    { title:"입장 인사", body:"고객 입장 시: \"어서오세요, 해듬카페입니다!\"\n• 큰 소리로 밝게 인사\n• 눈 맞춤 필수\n• 바쁠 때도 반드시 인사" },
+    { title:"주문 받기", body:"1. \"무엇으로 드릴까요?\" 또는 \"주문 도와드릴까요?\"\n2. 주문 받은 후 반드시 복창\n3. 혼잡 시 이름 묻기\n4. 음료 제공: \"~입니다, 맛있게 드세요!\" (양손 전달)" },
+    { title:"불만 고객 응대", body:"1. 먼저 사과: \"불편을 드려서 정말 죄송합니다\"\n2. 끝까지 경청 (말 자르지 않기)\n3. 해결책 제시\n4. 혼자 해결 어려우면 즉시 매니저 호출\n⚠️ 절대 고객과 언쟁 금지" },
+    { title:"자주 묻는 질문 응대", body:"• 와이파이: 비밀번호를 안내해주세요 (관리자가 업데이트)\n• 포장 가능 여부: 모든 음료 가능\n• 알레르기: 재료 확인 후 안내, 불확실하면 매니저 호출" }
+  ],
+  system: [
+    { title:"출퇴근 규칙", body:"• 출근: 근무 시작 5분 전 도착\n• 유니폼·앞치마 착용 후 출근 체크\n• 지각 시 반드시 사전 연락\n• 퇴근: 인수인계 완료 후 퇴근 체크" },
+    { title:"포스기 사용", body:"• 현금 결제: 영수증 반드시 발행\n• 카드 결제: 승인 후 영수증 확인\n• 오류 발생 시 임의 처리 금지 → 매니저 호출\n• 영업 종료 후 정산은 매니저가 직접 진행" },
+    { title:"재료·비품 관리", body:"• 재료 부족 시: 즉시 매니저에게 보고\n• 소비자에게 품절 안내 시 정중하게 대안 제시\n• 유통기한 지난 재료 절대 사용 금지\n• 비품 파손 시 즉시 보고" },
+    { title:"행동 규칙", body:"• 업무 중 개인 핸드폰 사용 금지 (긴급 상황 제외)\n• 음식물 섭취: 지정된 휴식시간, 스태프 공간에서만\n• 실수·사고: 숨기지 말고 즉시 매니저에게 보고\n• 동료 간 존댓말 사용 권장" }
+  ]
+};
+
+// ===== STATE =====
+let knowledge = JSON.parse(localStorage.getItem('haedum_knowledge') || 'null') || JSON.parse(JSON.stringify(DEFAULT_DATA));
+let adminPassword = localStorage.getItem('haedum_pw') || 'haedum1234';
+let geminiApiKey = localStorage.getItem('haedum_gemini_key') || '';
+let chatHistory = [];
+let isLoading = false;
+
+// ===== INIT =====
+function init() {
+  if(!geminiApiKey) {
+    document.getElementById('api-banner').style.display='flex';
+  }
+}
+init();
+
+// ===== API KEY =====
+function saveApiKey() {
+  const key = document.getElementById('gemini-key-input').value.trim();
+  if(!key) return;
+  geminiApiKey = key;
+  localStorage.setItem('haedum_gemini_key', key);
+  document.getElementById('api-key-status').style.display='block';
+  document.getElementById('api-banner').style.display='none';
+  setTimeout(()=>document.getElementById('api-key-status').style.display='none', 2500);
+}
+function quickSaveApi() {
+  const key = document.getElementById('quick-api-input').value.trim();
+  if(!key) return;
+  geminiApiKey = key;
+  localStorage.setItem('haedum_gemini_key', key);
+  document.getElementById('api-banner').style.display='none';
+  addBubble('bot','✓ API 키가 저장됐어요! 이제 질문해보세요 😊');
+}
+
+// ===== CHAT NAV =====
+const quickMap = {
+  all:     ['아메리카노 레시피 알려줘','마감 청소 순서가 어떻게 돼?','불만 고객은 어떻게 응대해?','신입이 꼭 알아야 할 규칙은?'],
+  recipe:  ['아메리카노 레시피 알려줘','라떼 만드는 방법은?','에스프레소 추출 시간은?','카라멜 마키아또 만들어줘'],
+  clean:   ['오픈 전 청소 순서 알려줘','마감 청소 순서가 어떻게 돼?','청소도구 색깔별 용도는?','머신 세척 방법은?'],
+  service: ['고객 입장 인사말은?','불만 고객은 어떻게 응대해?','주문 받는 순서 알려줘','음료 전달할 때 뭐라고 해?'],
+  system:  ['출근 규칙이 어떻게 돼?','포스기 오류나면 어떻게 해?','재료 떨어지면 어떻게 해?','핸드폰 써도 돼?']
+};
+
+function setNav(cat, el) {
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  const labels = {all:'전체 질문 가능',recipe:'레시피 질문',clean:'청소·위생 질문',service:'고객 응대 질문',system:'카페 시스템 질문'};
+  document.getElementById('current-cat').textContent = labels[cat];
+  const qs = quickMap[cat]||quickMap.all;
+  document.getElementById('quick-area').innerHTML = qs.map(q=>`<button class="quick-btn" onclick="askQ('${q}')">${q}</button>`).join('');
+}
+
+// ===== CHAT =====
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();} }
+function askQ(q) { document.getElementById('chat-input').value=q; sendMsg(); }
+
+function addBubble(role, html) {
+  const msgs = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.className='msg '+role;
+  d.innerHTML=(role==='bot'?'<div class="msg-av">AI</div>':'<div class="msg-av">나</div>')+`<div class="msg-bubble">${html}</div>`;
+  msgs.appendChild(d);
+  msgs.scrollTop=msgs.scrollHeight;
+  return d;
+}
+
+function showTyping() {
+  const msgs=document.getElementById('messages');
+  const d=document.createElement('div');
+  d.className='msg bot'; d.id='typing';
+  d.innerHTML='<div class="msg-av">AI</div><div class="msg-bubble"><div class="typing-wrap"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>';
+  msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
+}
+
+function buildSystemPrompt() {
+  const sections=[{key:'recipe',label:'레시피·음료 제조'},{key:'clean',label:'청소·위생'},{key:'service',label:'고객 응대'},{key:'system',label:'카페 시스템·운영 규칙'}];
+  let p=`당신은 '해듬카페'의 AI 매니저입니다. 신입직원이 카페 업무를 빠르게 익힐 수 있도록 친절하고 명확하게 안내합니다.\n아래는 해듬카페의 공식 정보입니다. 이 내용을 바탕으로 답변하세요. 등록되지 않은 정보는 "아직 등록되지 않은 내용이에요. 매니저님께 여쭤보세요!"라고 안내하세요.\n\n`;
+  sections.forEach(s=>{
+    p+=`## ${s.label}\n`;
+    (knowledge[s.key]||[]).forEach(item=>{ p+=`### ${item.title}\n${item.body}\n\n`; });
+  });
+  p+=`\n답변 스타일: 친근하고 명확하게. 단계가 있으면 번호로. 이모지 적절히 사용. 핵심 위주로 간결하게.`;
+  return p;
+}
+
+async function sendMsg() {
+  if(isLoading) return;
+  const input=document.getElementById('chat-input');
+  const text=input.value.trim();
+  if(!text) return;
+
+  if(!geminiApiKey) {
+    document.getElementById('api-banner').style.display='flex';
+    addBubble('bot','⚠️ Gemini API 키를 먼저 입력해주세요! 위 노란 배너 또는 관리자 페이지 → API 설정에서 입력할 수 있어요.');
+    return;
+  }
+
+  input.value=''; input.style.height='auto';
+  addBubble('user', text.replace(/\n/g,'<br>'));
+  chatHistory.push({role:'user', parts:[{text}]});
+  isLoading=true; showTyping();
+
+  try {
+    const systemPrompt = buildSystemPrompt();
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        system_instruction: { parts:[{text: systemPrompt}] },
+        contents: chatHistory,
+        generationConfig: { maxOutputTokens:1000 }
+      })
+    });
+    const data = await res.json();
+    document.getElementById('typing')?.remove();
+
+    if(data.error) {
+      addBubble('bot','⚠️ API 오류: '+data.error.message+'<br>API 키를 다시 확인해주세요.');
+    } else {
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '응답을 받지 못했어요.';
+      chatHistory.push({role:'model', parts:[{text:reply}]});
+      addBubble('bot', reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\*(.*?)\*/g,'$1'));
+    }
+  } catch(e) {
+    document.getElementById('typing')?.remove();
+    addBubble('bot','연결에 문제가 생겼어요. 인터넷 연결을 확인하고 다시 시도해주세요.');
+  }
+  isLoading=false;
+}
+
+// ===== ADMIN =====
+function showAdmin() {
+  document.getElementById('chat-view').style.display='none';
+  document.getElementById('admin-view').style.display='flex';
+}
+function hideAdmin() {
+  document.getElementById('admin-view').style.display='none';
+  document.getElementById('chat-view').style.display='flex';
+}
+function doLogin() {
+  const pw=document.getElementById('pw-input').value;
+  if(pw===adminPassword) {
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('admin-panel').style.display='flex';
+    renderAllLists();
+    if(geminiApiKey) document.getElementById('gemini-key-input').value='••••••••••••••••';
+    document.getElementById('pw-input').value='';
+  } else {
+    document.getElementById('login-err').style.display='block';
+  }
+}
+function doLogout() {
+  document.getElementById('admin-panel').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  hideAdmin();
+}
+function switchTab(tab, el) {
+  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+}
+function renderList(cat) {
+  const container=document.getElementById('list-'+cat);
+  container.innerHTML='';
+  (knowledge[cat]||[]).forEach((item,i)=>{
+    const d=document.createElement('div');
+    d.className='item-card';
+    d.innerHTML=`
+      <div class="item-card-header">
+        <input class="item-title-input" value="${escHtml(item.title)}" placeholder="제목" oninput="knowledge['${cat}'][${i}].title=this.value">
+        <button class="del-btn" onclick="delItem('${cat}',${i})">✕</button>
+      </div>
+      <textarea class="item-body-input" placeholder="내용을 입력하세요..." oninput="knowledge['${cat}'][${i}].body=this.value">${escHtml(item.body)}</textarea>`;
+    container.appendChild(d);
+  });
+}
+function renderAllLists() { ['recipe','clean','service','system'].forEach(c=>renderList(c)); }
+function addItem(cat) {
+  knowledge[cat].push({title:'새 항목',body:''});
+  renderList(cat);
+  document.getElementById('list-'+cat).lastElementChild?.scrollIntoView({behavior:'smooth'});
+  document.getElementById('list-'+cat).lastElementChild?.querySelector('.item-title-input')?.focus();
+}
+function delItem(cat,i) {
+  if(!confirm('이 항목을 삭제할까요?')) return;
+  knowledge[cat].splice(i,1); renderList(cat);
+}
+function saveAll() {
+  localStorage.setItem('haedum_knowledge', JSON.stringify(knowledge));
+  const ok=document.getElementById('save-ok');
+  ok.style.display='block';
+  setTimeout(()=>ok.style.display='none',2500);
+}
+function changePw() {
+  const cur=document.getElementById('pw-cur').value;
+  const nw=document.getElementById('pw-new').value;
+  const nw2=document.getElementById('pw-new2').value;
+  const msg=document.getElementById('pw-msg');
+  if(cur!==adminPassword){msg.style.display='block';msg.style.color='#c0392b';msg.textContent='현재 비밀번호가 틀렸어요';return;}
+  if(nw.length<4){msg.style.display='block';msg.style.color='#c0392b';msg.textContent='비밀번호는 4자 이상이어야 해요';return;}
+  if(nw!==nw2){msg.style.display='block';msg.style.color='#c0392b';msg.textContent='새 비밀번호가 일치하지 않아요';return;}
+  adminPassword=nw;
+  localStorage.setItem('haedum_pw',nw);
+  msg.style.display='block';msg.style.color='#5cad7e';msg.textContent='✓ 비밀번호가 변경됐어요!';
+  document.getElementById('pw-cur').value='';document.getElementById('pw-new').value='';document.getElementById('pw-new2').value='';
+}
+function escHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') hideAdmin(); });
+</script>
+</body>
+</html>
